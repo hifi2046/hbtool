@@ -1,0 +1,128 @@
+package hifi;
+
+import java.io.*;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.*;
+import java.util.*;
+import com.google.gson.*;
+import org.apache.commons.cli.*;
+import org.apache.commons.cli.DefaultParser;
+
+/**
+ * Hello world!
+ *
+ */
+
+class Line {
+	public String key;
+	public ArrayList<Item> set;
+	public Line(String k, ArrayList s) {
+		key=k;
+		set=new ArrayList(s);
+	}
+}
+
+class Item {
+	public String col;
+	public String value;
+	public Item(String c, String v) {
+		col=c;
+		value=v;
+	}
+}
+
+public class App 
+{
+    public static void retrieveFulldayData()
+    {
+    	try {
+            System.setProperty("zookeeper.sasl.client", "false");
+            Configuration conf=HBaseConfiguration.create();
+            Connection conn=ConnectionFactory.createConnection(conf);
+            Table table=conn.getTable(TableName.valueOf("hy_data"));
+            Admin admin=conn.getAdmin();
+            String key="662067680601001_COS20210101";
+            String cf="c";
+            Get rk=new Get(key.getBytes());
+            Result result=table.get(rk);
+            List<Cell> list=result.listCells();
+            System.out.println("Key: " + key);
+            ArrayList<Item> olist=new ArrayList();
+            for( Cell c : list) {
+            	String col=new String(CellUtil.cloneQualifier(c));
+            	String value=new String(CellUtil.cloneValue(c));
+            	System.out.println("Col: " + col + ", Value: " + value);
+            	olist.add(new Item(col, value));
+            }
+        
+        	Gson gson=new GsonBuilder().setPrettyPrinting().create();
+        	Line b=new Line(key, olist);
+        	BufferedWriter out=new BufferedWriter(new FileWriter("/home/hifi/pwork/fullday.json"));
+        	out.write(gson.toJson(b));
+        	out.close();
+    	} catch (IOException e) {
+    	    e.printStackTrace();
+    	}
+    }
+    
+    public static void main( String[] args )
+    {
+		Option opt1=new Option("c","cmd",true,"命令，包括：query/q, retrieve/r");
+		opt1.setRequired(true);
+		Option opt2=new Option("n","name",true,"企业名称，可以是部分名称");
+		opt2.setRequired(false);
+		Option opt3=new Option("o","concode",true,"连接码");
+		opt3.setRequired(false);
+		Option opt4=new Option("p","pointcode",true,"点码");
+		opt4.setRequired(false);
+		Option opt5=new Option("m","metric",true,"指标");
+		opt5.setRequired(false);
+		Option opt6=new Option("d","date",true,"日期，格式：YYYYMMDD 或 MMDD");
+		opt6.setRequired(false);
+		Options options=new Options();
+		options.addOption(opt1);
+		options.addOption(opt2);
+		options.addOption(opt3);
+		options.addOption(opt4);
+		options.addOption(opt5);
+		options.addOption(opt6);
+		CommandLine cli=null;
+		CommandLineParser cliParser=new DefaultParser();
+		HelpFormatter helpFormatter=new HelpFormatter();
+    	try {
+    		cli=cliParser.parse(options, args);
+    
+        System.setProperty("zookeeper.sasl.client", "false");
+        Configuration conf=HBaseConfiguration.create();
+        Connection conn=ConnectionFactory.createConnection(conf);
+        Table table=conn.getTable(TableName.valueOf("hy_data"));
+        Admin admin=conn.getAdmin();
+        String key="662067680601001_COS20210101";
+        String cf="c";
+        Get rk=new Get(key.getBytes());
+        Result result=table.get(rk);
+        List<Cell> list=result.listCells();
+        System.out.println("Key: " + key);
+        ArrayList<Item> olist=new ArrayList();
+        for( Cell c : list) {
+        	String col=new String(CellUtil.cloneQualifier(c));
+        	String value=new String(CellUtil.cloneValue(c));
+        	System.out.println("Col: " + col + ", Value: " + value);
+        	olist.add(new Item(col, value));
+        }
+    
+    	Gson gson=new GsonBuilder().setPrettyPrinting().create();
+    	Line b=new Line(key, olist);
+    	BufferedWriter out=new BufferedWriter(new FileWriter("/home/hifi/pwork/fullday.json"));
+    	out.write(gson.toJson(b));
+    	out.close();
+    	} catch (IOException e) {
+    	    e.printStackTrace();
+    	} catch (ParseException e) {
+    		helpFormatter.printHelp(">>> hbtool options", options);
+    		e.printStackTrace();
+    	}
+
+    }
+}
